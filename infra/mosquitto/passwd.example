@@ -1,0 +1,16 @@
+# This file documents the generated Mosquitto password file.
+#
+# The real file is infra/mosquitto/passwd, is gitignored, and must be produced by:
+#   cp .env.example .env        # edit every password first
+#   ./infra/mosquitto/generate-passwd.sh
+#
+# mosquitto_passwd stores PBKDF2 hashes, not plaintext. Never commit the
+# generated file, and never paste real device passwords into this template.
+#
+# Accounts created by the generator (username: role):
+#   backend         : backend subscriber, command publisher
+#   simulator       : demo simulator account
+#   esp32-<zone_id> : one account per device, for the seven fixed zones
+#
+# Example of the generated format (values are not usable):
+# backend:$7$101$xxxxxxxxxxxxxxxx$yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy

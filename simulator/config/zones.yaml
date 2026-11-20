@@ -1,0 +1,152 @@
+# Simulator zone profiles.
+#
+# `baselines` are the 24 h mean; `diurnal` is the peak-to-trough amplitude of the
+# daily cycle (peak at 15:00 UTC, trough at 03:00 UTC). Units are the canonical
+# units from docs/04-mqtt-spec.md §3. Zone IDs are frozen.
+zones:
+  - zone_id: prod-01
+    name: Production Line 1
+    type: production
+    device_id: esp32-prod-01
+    baselines:
+      temperature: 24.0
+      humidity: 52.0
+      noise: 71.0
+      air_quality: 480.0
+      pm25: 22.0
+      pm10: 45.0
+      voltage: 230.0
+    diurnal:
+      temperature: 3.0
+      humidity: 7.0
+      noise: 7.0
+      air_quality: 160.0
+      pm25: 7.0
+      pm10: 0.0
+      voltage: 2.4
+
+  - zone_id: prod-02
+    name: Production Line 2
+    type: production
+    device_id: esp32-prod-02
+    baselines:
+      temperature: 23.5
+      humidity: 53.0
+      noise: 70.0
+      air_quality: 500.0
+      pm25: 24.0
+      pm10: 49.0
+      voltage: 230.0
+    diurnal:
+      temperature: 3.2
+      humidity: 7.0
+      noise: 8.0
+      air_quality: 170.0
+      pm25: 8.0
+      pm10: 0.0
+      voltage: 2.6
+
+  - zone_id: prod-03
+    name: Assembly & Packaging
+    type: production
+    device_id: esp32-prod-03
+    baselines:
+      temperature: 23.0
+      humidity: 51.0
+      noise: 69.0
+      air_quality: 460.0
+      pm25: 20.0
+      pm10: 41.0
+      voltage: 230.0
+    diurnal:
+      temperature: 2.8
+      humidity: 6.0
+      noise: 9.0
+      air_quality: 140.0
+      pm25: 6.0
+      pm10: 0.0
+      voltage: 2.2
+
+  - zone_id: store-01
+    name: Raw Materials
+    type: storage
+    device_id: esp32-store-01
+    baselines:
+      temperature: 19.5
+      humidity: 58.0
+      noise: 52.0
+      air_quality: 400.0
+      pm25: 13.0
+      pm10: 27.0
+      voltage: 230.0
+    diurnal:
+      temperature: 2.0
+      humidity: 4.0
+      noise: 4.0
+      air_quality: 80.0
+      pm25: 3.0
+      pm10: 0.0
+      voltage: 1.6
+
+  - zone_id: store-02
+    name: Finished Goods
+    type: storage
+    device_id: esp32-store-02
+    baselines:
+      temperature: 20.0
+      humidity: 56.0
+      noise: 50.0
+      air_quality: 380.0
+      pm25: 11.0
+      pm10: 23.0
+      voltage: 230.0
+    diurnal:
+      temperature: 1.8
+      humidity: 4.0
+      noise: 3.0
+      air_quality: 70.0
+      pm25: 2.5
+      pm10: 0.0
+      voltage: 1.5
+
+  - zone_id: tech-01
+    name: Electrical Room
+    type: technical
+    device_id: esp32-tech-01
+    baselines:
+      temperature: 26.0
+      humidity: 44.0
+      noise: 60.0
+      air_quality: 560.0
+      pm25: 9.0
+      pm10: 19.0
+      voltage: 230.0
+    diurnal:
+      temperature: 2.5
+      humidity: 5.0
+      noise: 4.0
+      air_quality: 120.0
+      pm25: 2.0
+      pm10: 0.0
+      voltage: 2.0
+
+  - zone_id: tech-02
+    name: Control/Server Room
+    type: technical
+    device_id: esp32-tech-02
+    baselines:
+      temperature: 24.5
+      humidity: 46.0
+      noise: 58.0
+      air_quality: 520.0
+      pm25: 7.0
+      pm10: 15.0
+      voltage: 230.0
+    diurnal:
+      temperature: 1.5
+      humidity: 3.0
+      noise: 3.0
+      air_quality: 90.0
+      pm25: 1.5
+      pm10: 0.0
+      voltage: 1.8

@@ -1,0 +1,291 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # MOSQUITTO MQTT BROKER
+  # ============================================
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: env-monitoring-mosquitto
+    hostname: mosquitto
+    ports:
+      - "8883:8883"
+      - "9001:9001"  # WebSocket port for dashboard
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./infra/mosquitto/acl.conf:/mosquitto/config/acl.conf:ro
+      - ./infra/certs/ca/ca.crt:/mosquitto/certs/ca.crt:ro
+      - ./infra/certs/server/server.crt:/mosquitto/certs/server.crt:ro
+      - ./infra/certs/server/server.key:/mosquitto/certs/server.key:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/logs
+    environment:
+      - MOSQUITTO_USERNAME=backend
+      - MOSQUITTO_PASSWORD=${MOSQUITTO_BACKEND_PASSWORD:-backendpass}
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-h", "localhost", "-p", "8883", "--cafile", "/mosquitto/certs/ca.crt", "-t", "$SYS/broker/version", "-C", "1", "-i", "healthcheck", "--tls-version", "tlsv1.2"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - env-monitoring
+    restart: unless-stopped
+
+  # ============================================
+  # MONGODB
+  # ============================================
+  mongodb:
+    image: mongo:7.0
+    container_name: env-monitoring-mongodb
+    hostname: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./infra/mongodb/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=env_monitoring
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-mongopass}
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "-u", "admin", "-p", "${MONGO_ROOT_PASSWORD:-mongopass}", "--authenticationDatabase", "admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - env-monitoring
+    restart: unless-stopped
+
+  # ============================================
+  # BACKEND API (FastAPI)
+  # ============================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: env-monitoring-backend
+    hostname: backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./infra/certs/ca/ca.crt:/app/certs/ca.crt:ro
+    environment:
+      - MONGO_URI=mongodb://admin:${MONGO_ROOT_PASSWORD:-mongopass}@mongodb:27017
+      - MONGO_DB=env_monitoring
+      - MQTT_BROKER=mosquitto
+      - MQTT_PORT=8883
+      - MQTT_USERNAME=backend
+      - MQTT_PASSWORD=${MOSQUITTO_BACKEND_PASSWORD:-backendpass}
+      - MQTT_USE_TLS=true
+      - MQTT_CA_CERT=/app/certs/ca.crt
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
+      - JWT_ALGORITHM=HS256
+      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - JWT_REFRESH_TOKEN_EXPIRE_DAYS=7
+      - CORS_ORIGINS=http://localhost:8050,http://localhost:8080,http://localhost:8501
+      - LOG_LEVEL=INFO
+      - PYTHONPATH=/app
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - env-monitoring
+    restart: unless-stopped
+
+  # ============================================
+  # AI SERVICE (FastAPI + ML)
+  # ============================================
+  ai_service:
+    build:
+      context: ./ai_service
+      dockerfile: Dockerfile
+    container_name: env-monitoring-ai-service
+    hostname: ai-service
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./ai_service:/app
+      - ./infra/certs/ca/ca.crt:/app/certs/ca.crt:ro
+      - ai_models:/app/models
+    environment:
+      - MONGO_URI=mongodb://admin:${MONGO_ROOT_PASSWORD:-mongopass}@mongodb:27017
+      - MONGO_DB=env_monitoring
+      - MQTT_BROKER=mosquitto
+      - MQTT_PORT=8883
+      - MQTT_USERNAME=ai-service
+      - MQTT_PASSWORD=${MOSQUITTO_AI_PASSWORD:-aipass}
+      - MQTT_USE_TLS=true
+      - MQTT_CA_CERT=/app/certs/ca.crt
+      - BACKEND_URL=http://backend:8000
+      - MODEL_DIR=/app/models
+      - LOG_LEVEL=INFO
+      - PYTHONPATH=/app
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - env-monitoring
+    restart: unless-stopped
+
+  # ============================================
+  # DASHBOARD (Plotly Dash)
+  # ============================================
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: env-monitoring-dashboard
+    hostname: dashboard
+    ports:
+      - "8050:8050"
+    volumes:
+      - ./dashboard:/app
+      - ./infra/certs/ca/ca.crt:/app/certs/ca.crt:ro
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - AI_SERVICE_URL=http://ai-service:8000
+      - MQTT_BROKER=mosquitto
+      - MQTT_PORT=9001  # WebSocket port
+      - MQTT_USERNAME=dashboard
+      - MQTT_PASSWORD=${MOSQUITTO_DASHBOARD_PASSWORD:-dashpass}
+      - MQTT_USE_TLS=true
+      - MQTT_CA_CERT=/app/certs/ca.crt
+      - DASH_SECRET_KEY=${DASH_SECRET_KEY:-change-me-in-production}
+      - LOG_LEVEL=INFO
+      - PYTHONPATH=/app
+    depends_on:
+      backend:
+        condition: service_healthy
+      ai_service:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8050/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - env-monitoring
+    restart: unless-stopped
+
+  # ============================================
+  # MOBILE PWA (Nginx + Vanilla JS)
+  # ============================================
+  mobile:
+    build:
+      context: ./mobile
+      dockerfile: Dockerfile
+    container_name: env-monitoring-mobile
+    hostname: mobile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./mobile:/usr/share/nginx/html
+      - ./infra/certs/ca/ca.crt:/usr/share/nginx/html/certs/ca.crt:ro
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - API_BASE_URL=http://backend:8000
+      - WS_BASE_URL=ws://backend:8000/ws
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - env-monitoring
+    restart: unless-stopped
+
+  # ============================================
+  # SIMULATOR
+  # ============================================
+  simulator:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    container_name: env-monitoring-simulator
+    hostname: simulator
+    volumes:
+      - ./simulator:/app
+      - ./infra/certs/ca/ca.crt:/app/certs/ca.crt:ro
+      - ./infra/certs/client:/app/certs/client:ro
+    environment:
+      - MQTT_BROKER=mosquitto
+      - MQTT_PORT=8883
+      - MQTT_USE_TLS=true
+      - CA_CERT_PATH=/app/certs/ca.crt
+      - CLIENT_CERTS_DIR=/app/certs/client
+      - MOSQUITTO_PROD_01_PASS=${MOSQUITTO_PROD_01_PASS:-prod01pass}
+      - MOSQUITTO_PROD_02_PASS=${MOSQUITTO_PROD_02_PASS:-prod02pass}
+      - MOSQUITTO_PROD_03_PASS=${MOSQUITTO_PROD_03_PASS:-prod03pass}
+      - MOSQUITTO_STORE_01_PASS=${MOSQUITTO_STORE_01_PASS:-store01pass}
+      - MOSQUITTO_STORE_02_PASS=${MOSQUITTO_STORE_02_PASS:-store02pass}
+      - MOSQUITTO_TECH_01_PASS=${MOSQUITTO_TECH_01_PASS:-tech01pass}
+      - MOSQUITTO_TECH_02_PASS=${MOSQUITTO_TECH_02_PASS:-tech02pass}
+      - SAMPLING_INTERVAL=10
+      - LOG_LEVEL=INFO
+      - PYTHONPATH=/app
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    networks:
+      - env-monitoring
+    restart: unless-stopped
+    # Run in background, not interactive
+    command: python -m simulator.main --broker mosquitto --port 8883 --tls
+
+  # ============================================
+  # CERT GENERATOR (runs once)
+  # ============================================
+  cert-generator:
+    image: alpine/openssl:3.0
+    container_name: env-monitoring-cert-gen
+    volumes:
+      - ./infra/certs:/certs
+      - ./infra/certs/generate_certs.sh:/generate_certs.sh:ro
+    working_dir: /certs
+    entrypoint: ["sh", "/generate_certs.sh"]
+    networks:
+      - env-monitoring
+    profiles:
+      - setup
+
+# ============================================
+# VOLUMES
+# ============================================
+volumes:
+  mosquitto_data:
+  mosquitto_logs:
+  mongodb_data:
+  ai_models:
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  env-monitoring:
+    driver: bridge

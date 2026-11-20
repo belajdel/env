@@ -1,0 +1,36 @@
+# Secrets and generated material
+.env
+infra/tls/certs/
+infra/mosquitto/passwd
+firmware/config.py
+firmware/certs/
+*.pem
+*.key
+*.crt
+*.csr
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+
+# Runtime output
+output/
+reports/
+*.log
+ai_service/models/*.joblib
+ai_service/models/*.keras
+ai_service/models/*.h5
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

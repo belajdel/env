@@ -1,0 +1,91 @@
+# Injectable incident scenarios for demos, E2E tests and POC screenshots.
+#
+# Each anomaly is applied to the given parameters between `after_s` and
+# `after_s + duration_s` seconds after simulator start:
+#   spike    add `magnitude` for the whole window
+#   drift    ramp from 0 to `magnitude` across the window
+#   stuck    freeze the first value of the window
+#   dropout  stop publishing that parameter entirely
+scenarios:
+  overheat:
+    description: Machine overheating on production line 1 (temperature, dust, noise).
+    zones: [prod-01]
+    anomalies:
+      - parameter: temperature
+        type: drift
+        magnitude: 12.0
+        after_s: 0
+        duration_s: 900
+      - parameter: pm25
+        type: drift
+        magnitude: 70.0
+        after_s: 120
+        duration_s: 780
+      - parameter: pm10
+        type: drift
+        magnitude: 120.0
+        after_s: 120
+        duration_s: 780
+      - parameter: noise
+        type: spike
+        magnitude: 11.0
+        after_s: 60
+        duration_s: 300
+
+  dust_event:
+    description: Dust filter failure in assembly and packaging.
+    zones: [prod-03]
+    anomalies:
+      - parameter: pm25
+        type: spike
+        magnitude: 130.0
+        after_s: 0
+        duration_s: 600
+      - parameter: pm10
+        type: spike
+        magnitude: 280.0
+        after_s: 0
+        duration_s: 600
+
+  power_sag:
+    description: Mains sag in the electrical room (voltage below critical).
+    zones: [tech-01]
+    anomalies:
+      - parameter: voltage
+        type: drift
+        magnitude: -32.0
+        after_s: 0
+        duration_s: 600
+
+  ventilation_failure:
+    description: Ventilation loss in raw materials storage (humidity and CO2 rise).
+    zones: [store-01]
+    anomalies:
+      - parameter: humidity
+        type: drift
+        magnitude: 24.0
+        after_s: 0
+        duration_s: 1200
+      - parameter: air_quality
+        type: drift
+        magnitude: 1100.0
+        after_s: 60
+        duration_s: 1140
+
+  sensor_stuck:
+    description: Temperature probe frozen on production line 2.
+    zones: [prod-02]
+    anomalies:
+      - parameter: temperature
+        type: stuck
+        after_s: 0
+        duration_s: 600
+
+  sensor_dropout:
+    description: Noise sensor stops reporting on finished goods storage.
+    zones: [store-02]
+    anomalies:
+      - parameter: noise
+        type: dropout
+        after_s: 0
+        duration_s: 600

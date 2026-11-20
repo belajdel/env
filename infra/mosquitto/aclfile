@@ -1,0 +1,67 @@
+# Mosquitto ACL — one block per principal.
+# Username == device_id for hardware; the simulator has its own account.
+# Keep this file in sync with infra/mosquitto/generate-passwd.sh and the
+# seven zone IDs fixed in docs/07-thresholds.md.
+
+# --- Backend subscriber / command publisher -------------------------------
+user backend
+topic read factory/#
+topic write factory/+/+/cmd
+
+# --- Simulator (demo only) ------------------------------------------------
+user simulator
+topic read factory/+/+/cmd
+topic write factory/+/+
+topic write factory/+/+/status
+topic write factory/+/+/state
+topic write factory/+/+/ack
+
+# --- ESP32 devices: write own measurements, status/state/ack; read own cmd -
+user esp32-prod-01
+topic write factory/prod-01/+
+topic write factory/prod-01/esp32-prod-01/status
+topic write factory/prod-01/esp32-prod-01/state
+topic write factory/prod-01/esp32-prod-01/ack
+topic read factory/prod-01/esp32-prod-01/cmd
+
+user esp32-prod-02
+topic write factory/prod-02/+
+topic write factory/prod-02/esp32-prod-02/status
+topic write factory/prod-02/esp32-prod-02/state
+topic write factory/prod-02/esp32-prod-02/ack
+topic read factory/prod-02/esp32-prod-02/cmd
+
+user esp32-prod-03
+topic write factory/prod-03/+
+topic write factory/prod-03/esp32-prod-03/status
+topic write factory/prod-03/esp32-prod-03/state
+topic write factory/prod-03/esp32-prod-03/ack
+topic read factory/prod-03/esp32-prod-03/cmd
+
+user esp32-store-01
+topic write factory/store-01/+
+topic write factory/store-01/esp32-store-01/status
+topic write factory/store-01/esp32-store-01/state
+topic write factory/store-01/esp32-store-01/ack
+topic read factory/store-01/esp32-store-01/cmd
+
+user esp32-store-02
+topic write factory/store-02/+
+topic write factory/store-02/esp32-store-02/status
+topic write factory/store-02/esp32-store-02/state
+topic write factory/store-02/esp32-store-02/ack
+topic read factory/store-02/esp32-store-02/cmd
+
+user esp32-tech-01
+topic write factory/tech-01/+
+topic write factory/tech-01/esp32-tech-01/status
+topic write factory/tech-01/esp32-tech-01/state
+topic write factory/tech-01/esp32-tech-01/ack
+topic read factory/tech-01/esp32-tech-01/cmd
+
+user esp32-tech-02
+topic write factory/tech-02/+
+topic write factory/tech-02/esp32-tech-02/status
+topic write factory/tech-02/esp32-tech-02/state
+topic write factory/tech-02/esp32-tech-02/ack
+topic read factory/tech-02/esp32-tech-02/cmd
